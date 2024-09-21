@@ -7,6 +7,22 @@ impl MeanSquaredError {
         (target - predicted).powi(2)
     }
 
+    fn mse_derivative(y_pred: f64, y_true: f64) -> f64 {
+        2.0 * (y_true - y_pred) 
+    }
+
+    pub fn compute_gradient(target: &Matrix, predicted: &Matrix) -> Matrix {
+        let n = target.values.len() as f64;
+    
+        let grad_values = target.values
+            .iter()
+            .zip(predicted.values.iter())
+            .map(|(&y_true, &y_pred)| Self::mse_derivative(y_true, y_pred) / n)
+            .collect::<Vec<f64>>();
+    
+        Matrix::new((grad_values.len(), 1), grad_values)
+    }
+
     pub fn apply(target: &Matrix, predicted: &Matrix) -> f64 {
         assert_eq!(target.rows, predicted.rows, "Error: missmatch matrix dimension");
         assert_eq!(target.cols, predicted.cols, "Error: missmatch matrix dimension");

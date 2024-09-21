@@ -5,6 +5,7 @@ pub struct Linear {
     weights: Matrix,
     biases: Matrix, 
     cached_input: Option<Matrix>,
+    learning_rate: f64,
 }
 
 impl Linear {
@@ -15,22 +16,40 @@ impl Linear {
         Linear { 
             weights, 
             biases, 
-            cached_input: None
+            cached_input: None,
+            learning_rate: 1.0
         }
     }
 
     pub fn forward(&mut self, input: &Matrix) -> Matrix {
         self.cached_input = Some(input.clone());
-
+        
         input
             .dot(&self.weights)
             .add(&self.biases)
+    }
+
+    pub fn backward(&mut self, grad_output: &Matrix) -> Matrix {
+        let input = self.cached_input.as_ref().expect("No cached input found. Did you forget to call forward()?");
+
+        let grad_weights = input.transpose().dot(&grad_output);
+        let grad_biases = grad_output.sum_rows();
+        let grad_input = grad_output.dot(&self.weights.transpose());
+
+        self.weights = self.weights.sub(&grad_weights.scale(self.learning_rate));
+        self.biases = self.biases.sub(&grad_biases.scale(self.learning_rate));
+
+        grad_input
     }
 }
 
 impl Layer for Linear {
     fn forward(&mut self, input: &Matrix) -> Matrix {
         self.forward(input)
+    }
+
+    fn backward(&mut self, grad_output: &Matrix) -> Matrix {
+        self.backward(grad_output)
     }
 }
 

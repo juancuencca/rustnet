@@ -127,6 +127,69 @@ impl Matrix {
         }
     }
 
+    pub fn sub(&self, other: &Matrix) -> Matrix {
+        assert_eq!(self.rows, other.rows, "Matrix dimensions must match.");
+        assert_eq!(self.cols, other.cols, "Matrix dimensions must match.");
+
+        let values = self.values
+            .iter()
+            .zip(other.values.iter())
+            .map(|(a, b)| a - b)
+            .collect();
+
+        Matrix { 
+            rows: self.rows, 
+            cols: self.cols, 
+            values 
+        }
+    }
+
+    pub fn scale(&self, scalar: f64) -> Matrix {
+        let values = self.values
+            .iter()
+            .map(|&val| val * scalar)
+            .collect();
+
+        Matrix { 
+            rows: self.rows, 
+            cols: self.cols, 
+            values 
+        }
+    }
+
+    pub fn sum_rows(&self) -> Matrix {
+        let mut sums = vec![0.0; self.cols];
+
+        for row in 0..self.rows {
+            for col in 0..self.cols {
+                sums[col] += self.get_value(row, col);
+            }
+        }
+
+        Matrix { 
+            rows: 1, 
+            cols: self.cols, 
+            values: sums 
+        }
+    }
+
+    pub fn hadamard_product(&self, other: &Matrix) -> Matrix {
+        assert_eq!(self.rows, other.rows, "Matrices must have the same dimensions for element-wise multiplication.");
+        assert_eq!(self.cols, other.cols, "Matrices must have the same dimensions for element-wise multiplication.");
+
+        let values = self.values
+            .iter()
+            .zip(other.values.iter())
+            .map(|(a, b)| a * b)
+            .collect::<Vec<f64>>();
+
+        Matrix { 
+            rows: self.rows, 
+            cols: self.cols, 
+            values 
+        }
+    }
+
     fn get_value(&self, row: usize, col: usize) -> f64 {
         self.values[(row * self.cols) + col]
     }
@@ -232,6 +295,73 @@ mod tests {
             5.0,
             6.0, 
             7.0,
+        ]);
+    }
+
+    #[test]
+    fn test_matrix_sum_rows_success() {
+        let f_matrix = Matrix::new((1, 3), vec![
+            1.0, 2.0, 3.0
+        ]);
+        let f_summed = f_matrix.sum_rows(); 
+        assert_eq!((f_summed.rows, f_summed.cols), (1, 3)); 
+        assert_eq!(f_summed.values, vec![
+            1.0, 2.0, 3.0
+        ]);
+    
+        let s_matrix = Matrix::new((2, 2), vec![1.0, 2.0, 3.0, 4.0]);
+        let s_summed = s_matrix.sum_rows(); 
+        assert_eq!((s_summed.rows, s_summed.cols), (1, 2)); 
+        assert_eq!(s_summed.values, vec![
+            4.0, 6.0
+        ]);
+    }
+
+    #[test]
+    fn test_matrix_substraction_success() {
+        let f_matrix = Matrix::new((1, 3), vec![
+            4.0, 6.0, 5.0
+        ]);
+        let s_matrix = Matrix::new((1, 3), vec![
+            1.0, 2.0, 1.0
+        ]);
+
+        let r_sub = f_matrix.sub(&s_matrix);
+
+        assert_eq!((r_sub.rows, r_sub.cols), (1, 3)); 
+        assert_eq!(r_sub.values, vec![
+            3.0, 4.0, 4.0
+        ]);
+    }
+
+    #[test]
+    fn test_matrix_hadamard_product_success() {
+        let f_matrix = Matrix::new((1, 3), vec![
+            4.0, 6.0, 5.0
+        ]);
+        let s_matrix = Matrix::new((1, 3), vec![
+            1.0, 2.0, 1.0
+        ]);
+
+        let r_prod = f_matrix.hadamard_product(&s_matrix);
+
+        assert_eq!((r_prod.rows, r_prod.cols), (1, 3)); 
+        assert_eq!(r_prod.values, vec![
+            4.0, 12.0, 5.0
+        ]);
+    }
+
+    #[test]
+    fn test_matrix_scale_success() {
+        let f_matrix = Matrix::new((1, 3), vec![
+            4.0, 6.0, 5.0
+        ]);
+        
+        let r_scaled = f_matrix.scale(2.0);
+
+        assert_eq!((r_scaled.rows, r_scaled.cols), (1, 3)); 
+        assert_eq!(r_scaled.values, vec![
+            8.0, 12.0, 10.0
         ]);
     }
 }
