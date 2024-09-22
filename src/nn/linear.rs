@@ -4,6 +4,7 @@ use super::sequential::Layer;
 pub struct Linear {
     weights: Matrix,
     biases: Matrix, 
+    cached_input: Option<Matrix>,
 }
 
 impl Linear {
@@ -14,10 +15,13 @@ impl Linear {
         Linear { 
             weights, 
             biases, 
+            cached_input: None
         }
     }
 
-    pub fn forward(&self, input: &Matrix) -> Matrix {
+    pub fn forward(&mut self, input: &Matrix) -> Matrix {
+        self.cached_input = Some(input.clone());
+
         input
             .dot(&self.weights)
             .add(&self.biases)
@@ -25,7 +29,7 @@ impl Linear {
 }
 
 impl Layer for Linear {
-    fn forward(&self, input: &Matrix) -> Matrix {
+    fn forward(&mut self, input: &Matrix) -> Matrix {
         self.forward(input)
     }
 }
@@ -37,7 +41,7 @@ mod tests {
     #[test]
     fn test_linear_forward_success() {
         let seed = 42;
-        let linear = Linear::new(2, 2, Some(seed));
+        let mut linear = Linear::new(2, 2, Some(seed));
         let input = Matrix::new((1, 2), vec![
             0.5, 0.5
         ]);

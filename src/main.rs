@@ -7,9 +7,9 @@ fn main() {
 
     let mut sequential = Sequential::new();
     sequential.add_layer(Box::new(Linear::new(2, 2, seed)));
-    sequential.add_layer(Box::new(Sigmoid {}));
+    sequential.add_layer(Box::new(Sigmoid::new()));
     sequential.add_layer(Box::new(Linear::new(2, 1, seed)));
-    sequential.add_layer(Box::new(Sigmoid {}));
+    sequential.add_layer(Box::new(Sigmoid::new()));
 
     let x = Matrix::new((4, 2), vec![
         0.0, 0.0,

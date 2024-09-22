@@ -1,17 +1,33 @@
 use crate::matrix::Matrix;
 use super::sequential::Layer;
 
-pub struct Sigmoid;
+pub struct Sigmoid {
+    cached_output: Option<Matrix>
+}
 
 impl Sigmoid {
+    pub fn new() -> Sigmoid {
+        Sigmoid {
+            cached_output: None
+        }
+    }
+    
     pub fn activate(x: f64) -> f64 {
         1.0 / (1.0 + (-x).exp())
     }
+
+    fn forward(&mut self, input: &Matrix) -> Matrix {
+        let output = input.map(|x| Self::activate(x));
+        self.cached_output = Some(output.clone());
+        
+        output
+    }
+
 }
 
 impl Layer for Sigmoid {
-    fn forward(&self, input: &Matrix) -> Matrix {
-        input.map(|x| Self::activate(x))
+    fn forward(&mut self, input: &Matrix) -> Matrix {
+        self.forward(input)
     }
 }
 

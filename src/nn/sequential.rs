@@ -1,7 +1,7 @@
 use crate::matrix::Matrix;
 
 pub trait Layer {
-    fn forward(&self, input: &Matrix) -> Matrix;
+    fn forward(&mut self, input: &Matrix) -> Matrix;
 }
 
 pub struct Sequential {
@@ -19,9 +19,9 @@ impl Sequential {
         self.layers.push(layer);
     } 
 
-    pub fn forward(&self, input: &Matrix) -> Matrix {
+    pub fn forward(&mut self, input: &Matrix) -> Matrix {
         self.layers
-            .iter()
+            .iter_mut()
             .fold(input.clone(), |acc, layer| layer.forward(&acc))
     }
 }
