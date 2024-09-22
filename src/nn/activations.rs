@@ -20,7 +20,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_sigmoid_activate_success() {
+    fn test_activation_sigmoid_success() {
         assert_eq!(Sigmoid::activate(0.0), 0.5);
         assert_eq!(Sigmoid::activate(0.5), 0.6224593312018546);
     }

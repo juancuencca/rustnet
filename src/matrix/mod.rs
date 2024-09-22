@@ -1,9 +1,7 @@
 use rand::{Rng, SeedableRng};
-use rand::rngs::StdRng;
+use rand::prelude::*;
 
-const RANDOM_SEED: u64 = 42;
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct Matrix {
     pub rows: usize,
     pub cols: usize,
@@ -11,87 +9,122 @@ pub struct Matrix {
 }
 
 impl Matrix {
-    pub fn new((rows, cols): (usize, usize), values: Vec<f64>) -> Result<Self, &'static str> {
-        if rows * cols != values.len() {
-            return Err("Err: missmatch array length with shape provided");
+    pub fn new((rows, cols): (usize, usize), values: Vec<f64>) -> Matrix {
+        assert_eq!(rows * cols, values.len(), "Error: mismatch array length with shape provided");
+        
+        Matrix { 
+            rows, 
+            cols, 
+            values, 
         }
-
-        Ok(Self { rows, cols, values })
     } 
 
-    pub fn rand((rows, cols): (usize, usize)) -> Self {
-        let mut rng = StdRng::seed_from_u64(RANDOM_SEED);
+    pub fn rand((rows, cols): (usize, usize), seed: Option<u64>) -> Matrix {
+        let mut rng: Box<dyn RngCore> = match seed {
+            Some(seed) => Box::new(StdRng::seed_from_u64(seed)),
+            None => Box::new(rand::thread_rng()),
+        };
 
-        let values = (0..(rows * cols)).into_iter()
+        let values = (0..(rows * cols))
+            .into_iter()
             .map(|_| rng.gen_range(0.0..=1.0))
             .collect::<Vec<f64>>(); 
-
-        Self { rows, cols, values }
+        
+        Matrix { 
+            rows, 
+            cols, 
+            values 
+        }
     }
 
-    pub fn zeros((rows, cols): (usize, usize)) -> Self {
-        let values = (0..(rows * cols)).into_iter()
+    pub fn zeros((rows, cols): (usize, usize)) -> Matrix {
+        let values = (0..(rows * cols))
+            .into_iter()
             .map(|_| 0.0)
             .collect::<Vec<f64>>();
-        
-        Self { rows, cols, values }
+
+        Matrix { 
+            rows, 
+            cols, 
+            values 
+        }
     }
-    
-    pub fn map<F>(&self, f: F) -> Self
+}
+
+impl Matrix {
+    pub fn map<F>(&self, f: F) -> Matrix
     where  
         F: Fn(f64) -> f64 
     {
-        let values = self.values.iter()
+        let values = self.values
+            .iter()
             .map(|&x| f(x))
             .collect::<Vec<f64>>();
-        Self { rows: self.rows, cols: self.cols, values }
+
+        Matrix { 
+            rows: self.rows, 
+            cols: self.cols, 
+            values 
+        }
     } 
 
-    pub fn transpose(&self, ) -> Self {
-        let mut transposed = Vec::new();
+    pub fn transpose(&self) -> Matrix {
+        let mut values = Vec::new();
         
         for j in 0..self.cols {
             for i in 0..self.rows {
-                transposed.push(self.get_value(i, j));
+                values.push(self.get_value(i, j));
             }
         }
 
-        Self { rows: self.cols, cols: self.rows, values: transposed }
+        Matrix { 
+            rows: self.cols, 
+            cols: self.rows, 
+            values 
+        }
     }
 
-    pub fn dot(&self, t: &Self) -> Result<Self, &'static str> {
-        if self.cols != t.rows {
-            return Err("Error: matrices shape missmatch");
-        }
+    pub fn dot(&self, m: &Matrix) -> Matrix {
+        assert_eq!(self.cols, m.rows, "Error: matrices shape mismatch");
 
         let mut values = Vec::new();
 
         for i in 0..self.rows {
-            for j in 0..t.cols {
+            for j in 0..m.cols {
                 let mut sum = 0.0;
+                
                 for k in 0..self.cols {
-                    sum += self.get_value(i, k) * t.get_value(k, j);        
+                    sum += self.get_value(i, k) * m.get_value(k, j);        
                 }
+
                 values.push(sum);
             }
         }
 
-        Ok(Self { rows: self.rows, cols: t.cols, values })
+        Matrix { 
+            rows: self.rows, 
+            cols: m.cols, 
+            values 
+        }
     }
 
-    pub fn sum(&self, t: &Self) -> Result<Self, &'static str> {
-        if self.rows != t.rows || self.cols != t.cols {
-            return Err("Error: matrices shape missmatch");
-        }
+    pub fn add(&self, m: &Matrix) -> Matrix {
+        assert_eq!(self.cols, m.cols, "Matrix columns must match.");
+        assert_eq!(m.rows, 1, "Parameter's matrix column must be 1");
 
-        let mut values = Vec::new();
+        let mut values = vec![0.0; self.rows * self.cols];
+
         for i in 0..self.rows {
             for j in 0..self.cols {
-                values.push(self.get_value(i, j) + t.get_value(i, j));
+                values[i * self.cols + j] = self.get_value(i, j) + m.get_value(0, j); 
             }
         }
 
-        Ok(Self { rows: self.rows, cols: self.cols, values })
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            values,
+        }
     }
 
     fn get_value(&self, row: usize, col: usize) -> f64 {
@@ -104,70 +137,101 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_create_random_matrix_success() {
-        let mat = Matrix::rand((2, 2));
-        assert_eq!(mat.rows, 2);
-        assert_eq!(mat.cols, 2);
-        assert_eq!(mat.values, vec![0.5265574090027739, 0.542725209903144, 0.636465099143895, 0.4059017582307768]);
+    fn test_matrix_creation_success() {
+        let matrix = Matrix::new((1, 2), vec![0.0, 1.0]);
+
+        assert_eq!((matrix.rows, matrix.cols), (1, 2));
+        assert_eq!(matrix.values, vec![
+            0.0, 1.0
+        ]);
+    }
+
+    #[test]
+    fn test_matrix_rand_creation_success() {
+        let seed = 42;
+        
+        let f_matrix = Matrix::rand((2, 2), Some(seed));
+        assert_eq!((f_matrix.rows, f_matrix.cols), (2, 2));
+        assert_eq!(f_matrix.values, vec![
+            0.5265574090027739, 0.542725209903144, 
+            0.636465099143895, 0.4059017582307768
+        ]);
     
-        let mat = Matrix::rand((2, 1));
-        assert_eq!(mat.rows, 2);
-        assert_eq!(mat.cols, 1);
-        assert_eq!(mat.values, vec![0.5265574090027739, 0.542725209903144]);
+        let s_matrix = Matrix::rand((2, 1), Some(seed));
+        assert_eq!((s_matrix.rows, s_matrix.cols), (2, 1));
+        assert_eq!(s_matrix.values, vec![
+            0.5265574090027739, 
+            0.542725209903144
+        ]);
     }
 
     #[test]
-    fn test_create_zeros_matrix_success() {
-        assert_eq!(Matrix::zeros((2, 2)), Matrix {
-            rows: 2, cols: 2, values: vec![0.0, 0.0, 0.0, 0.0]
-        });
+    fn test_matrix_zeros_creation_success() {
+        let matrix = Matrix::zeros((2, 2));
+
+        assert_eq!((matrix.rows, matrix.cols), (2, 2));
+        assert_eq!(matrix.values, vec![
+            0.0, 0.0,
+            0.0, 0.0
+        ]);
     }
     
     #[test]
-    fn test_transpose_matrix_success() {
-        let mat = Matrix { rows: 2, cols: 3, values: vec![2.0, 3.0, 4.0, 5.0, 6.0, 7.0]};
-        assert_eq!(mat.transpose(), Matrix {
-            rows: 3, cols: 2, values: vec![2.0, 5.0, 3.0, 6.0, 4.0, 7.0]
-        });
+    fn test_matrix_transposed_success() {
+        let matrix = Matrix::new((2, 3), vec![
+            2.0, 3.0, 4.0, 
+            5.0, 6.0, 7.0
+        ]);
+
+        let transposed = matrix.transpose();
+
+        assert_eq!((transposed.rows, transposed.cols), (3, 2));
+        assert_eq!(transposed.values, vec![
+            2.0, 5.0, 
+            3.0, 6.0, 
+            4.0, 7.0
+        ]);
     }
 
     #[test]
-    fn test_dot_matrix_error_mismatch_shape() {
-        let m = Matrix { rows: 2, cols: 1, values: vec![2.0, 3.0] };
-        let t = Matrix { rows: 2, cols: 1, values: vec![2.0, 3.0] };
+    fn test_matrix_dot_success() {
+        let f_matrix = Matrix::new((2, 1), vec![
+            2.0, 
+            3.0
+        ]);
+        let s_matrix = Matrix::new((1, 2), vec![
+            2.0, 3.0
+        ]);
 
-        let r = m.dot(&t);
-        assert!(r.is_err());
-        assert_eq!(r.unwrap_err(), "Error: matrices shape missmatch");
+        let r_matrix = f_matrix.dot(&s_matrix);
+
+        assert_eq!((r_matrix.rows, r_matrix.cols), (2, 2));
+        assert_eq!(r_matrix.values, vec![
+            4.0, 6.0, 
+            6.0, 9.0
+        ]);
     }
 
     #[test]
-    fn test_dot_matrix_success() {
-        let m = Matrix { rows: 2, cols: 1, values: vec![2.0, 3.0] };
-        let t = Matrix { rows: 1, cols: 2, values: vec![2.0, 3.0] };
+    fn test_matrix_addition_success() {
+        let f_matrix = Matrix::new((4, 1), vec![
+            2.0, 
+            3.0,
+            4.0, 
+            5.0,
+        ]);
+        
+        let s_matrix = Matrix::new((1, 1), vec![
+            2.0, 
+        ]);
 
-        let r = m.dot(&t);
-        assert!(r.is_ok());
-        assert_eq!(r.unwrap(), Matrix { rows: 2, cols: 2, values: vec![4.0, 6.0, 6.0, 9.0]});
-    }
-
-    #[test]
-    fn test_sum_matrix_error_mismatch_shape() {
-        let m = Matrix { rows: 2, cols: 1, values: vec![2.0, 3.0] };
-        let t = Matrix { rows: 2, cols: 2, values: vec![2.0, 3.0, 2.0, 2.0] };
-
-        let r = m.sum(&t);
-        assert!(r.is_err());
-        assert_eq!(r.unwrap_err(), "Error: matrices shape missmatch");
-    }
-
-    #[test]
-    fn test_sum_matrix_success() {
-        let m = Matrix { rows: 2, cols: 1, values: vec![2.0, 3.0] };
-        let t = Matrix { rows: 2, cols: 1, values: vec![2.0, 3.0] };
-
-        let r = m.sum(&t);
-        assert!(r.is_ok());
-        assert_eq!(r.unwrap(), Matrix { rows: 2, cols: 1, values: vec![4.0, 6.0] });
+        let r_matrix = f_matrix.add(&s_matrix);
+        assert_eq!((r_matrix.rows, r_matrix.cols), (4, 1));
+        assert_eq!(r_matrix.values, vec![
+            4.0, 
+            5.0,
+            6.0, 
+            7.0,
+        ]);
     }
 }
