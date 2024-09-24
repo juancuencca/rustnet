@@ -28,7 +28,6 @@ pub trait LossFunction {
     }
 }
 
-
 pub struct MeanSquaredError;
 
 impl LossFunction for MeanSquaredError {
@@ -36,7 +35,21 @@ impl LossFunction for MeanSquaredError {
         (target - predicted).powi(2)
     }
 
-    fn derivative(y_pred: f64, y_true: f64) -> f64 {
-        2.0 * (y_true - y_pred) 
+    fn derivative(target: f64, predicted: f64) -> f64 {
+        2.0 * (predicted - target) 
+    }
+}
+
+pub struct MeanAbsoluteError;
+
+impl LossFunction for MeanAbsoluteError {
+    fn loss(target: f64, predicted: f64) -> f64 {
+        (target - predicted).abs()
+    }
+
+    fn derivative(target: f64, predicted: f64) -> f64 {
+        if predicted > target { 1.0 } 
+        else if predicted < target { -1.0 } 
+        else { 0.0 } 
     }
 }
