@@ -1,4 +1,5 @@
 use rustnet::nn::loss::MeanSquaredError;
+use rustnet::nn::loss::LossFunction;
 use rustnet::nn::{activations::Sigmoid, linear::Linear, sequential::Sequential};
 use rustnet::matrix::Matrix;
 
@@ -29,9 +30,9 @@ fn main() {
 
     for epoch in 0..num_epochs {
         let predictions = sequential.forward(&train_x);
-        let loss = MeanSquaredError::apply(&train_y, &predictions);
+        let loss = MeanSquaredError::calculate(&train_y, &predictions);
         
-        let loss_grad = MeanSquaredError::compute_gradient(&train_y, &predictions); 
+        let loss_grad = MeanSquaredError::gradient(&train_y, &predictions); 
         sequential.backward(&loss_grad);
         
         if epoch % 100 == 0 {
