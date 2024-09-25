@@ -1,4 +1,5 @@
 use crate::matrix::Matrix;
+use std::f64::EPSILON; 
 
 pub trait LossFunction {
     fn loss(target: f64, predicted: f64) -> f64;
@@ -51,5 +52,21 @@ impl LossFunction for MeanAbsoluteError {
         if predicted > target { 1.0 } 
         else if predicted < target { -1.0 } 
         else { 0.0 } 
+    }
+}
+
+pub struct BinaryCrossEntropy;
+
+impl LossFunction for BinaryCrossEntropy {
+    fn loss(target: f64, predicted: f64) -> f64 {
+        // Clamp predicted values to avoid log(0)
+        let predicted = predicted.clamp(EPSILON, 1.0 - EPSILON);
+        -target * predicted.ln() - (1.0 - target) * (1.0 - predicted).ln()
+    }
+
+    fn derivative(target: f64, predicted: f64) -> f64 {
+        // Clamp predicted values to avoid division by zero
+        let predicted = predicted.clamp(EPSILON, 1.0 - EPSILON);
+        (predicted - target) / (predicted * (1.0 - predicted))
     }
 }
