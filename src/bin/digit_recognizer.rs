@@ -1,25 +1,46 @@
 use std::{error::Error, path::Path, process};
-use rustnet::matrix::Matrix;
+use rustnet::{matrix::Matrix, nn::{activations::{Relu, Sigmoid, Softmax}, linear::Linear, loss::{CrossEntropy, MulticlassLossFunction}, sequential::Sequential}};
 
 fn main() {
     let path = Path::new("C:/Users/juan9/Documents/Education/Code/ML/datasets/mnist_csv/mnist_train.csv");
-    let result = read_from_path(path, 5);
+    let result = read_from_path(path, 10000);
 
     if let Ok((train_x, train_y)) = result {
-        println!("Train x");
-        println!("rows: {}", train_x.rows);
-        println!("cols: {}", train_x.cols);
-        println!("values lenght: {}", train_x.values.len());
         
-        println!("\nTrain y");
-        println!("rows: {}", train_y.rows);
-        println!("cols: {}", train_y.cols);
-        println!("values lenght: {}", train_y.values.len());
+        let seed = Some(42);
+        let mut sequential = Sequential::new();
+        sequential.add_layer(Box::new(Linear::new(784, 8, seed)));
+        sequential.add_layer(Box::new(Relu::new()));
+        sequential.add_layer(Box::new(Linear::new(8, 10, seed)));
+        sequential.add_layer(Box::new(Softmax::new()));
+
+        // let predictions = sequential.forward(&train_x);
+    
+        // println!("rows: {}", predictions.rows);
+        // println!("cols: {}", predictions.cols);
+        // println!("first 20 values: {:?}", &predictions.values[0..20]);
+
+        let epochs = 10;
+
+        for epoch in 0..epochs {
+            let predictions = sequential.forward(&train_x);    
+            let loss = CrossEntropy::calculate(&train_y, &predictions);
+        
+            let loss_grad = CrossEntropy::gradient(&train_y, &predictions);
+            
+            sequential.backward(&loss_grad);
+            
+            if epoch % (epochs / 10) == 0 {
+                println!("Epoch {}: Loss = {}", epoch, loss);
+            }
+        }
 
     } else if let Err(err) = result {
         println!("error running example: {}", err);
         process::exit(1);
     } 
+
+
 }
 
 fn one_hot(items: &[f64]) -> Vec<f64> {
@@ -50,7 +71,7 @@ fn read_from_path(path: &Path, max_records: usize) -> Result<(Matrix, Matrix), B
                 y_values.push(item_f64);
                 continue; 
             }
-            x_values.push(item_f64);
+            x_values.push(item_f64 / 255.0);
         } 
 
         if n == max_records - 1 {
