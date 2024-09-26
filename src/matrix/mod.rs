@@ -68,6 +68,24 @@ impl Matrix {
         }
     } 
 
+    pub fn map_chunks<F>(&self, chunk_size: usize, f: F) -> Matrix
+    where  
+        F: Fn(&[f64]) -> Vec<f64> 
+    {
+        let mut new_values = Vec::with_capacity(self.values.len());
+        
+        for chunk in self.values.chunks(chunk_size) {
+            let transformed_chunk = f(chunk); 
+            new_values.extend(transformed_chunk); 
+        }
+
+        Matrix { 
+            rows: self.rows, 
+            cols: self.cols, 
+            values: new_values 
+        }
+    }
+
     pub fn transpose(&self) -> Matrix {
         let mut values = Vec::new();
         
