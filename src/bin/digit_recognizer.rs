@@ -1,50 +1,70 @@
 use std::{error::Error, path::Path, process};
-use rustnet::{matrix::Matrix, nn::{activations::{Relu, Sigmoid, Softmax}, linear::Linear, loss::{CrossEntropy, MulticlassLossFunction}, sequential::Sequential}};
+use rustnet::{matrix::Matrix, nn::{activations::{Sigmoid, Softmax}, linear::Linear, loss::{CrossEntropy, MulticlassLossFunction}, sequential::Sequential}};
 
-fn main() {
-    let path = Path::new("C:/Users/juan9/Documents/Education/Code/ML/datasets/mnist_csv/mnist_train.csv");
-    let result = read_from_path(path, 10000);
+struct ModelV0 {
+    sequential: Sequential,
+}
 
-    if let Ok((train_x, train_y)) = result {
-        
-        let seed = Some(42);
+impl ModelV0 {
+    fn new(input_size: usize, hidden_units: usize, output_size:usize, seed: Option<u64>) -> ModelV0 {
         let mut sequential = Sequential::new();
-        sequential.add_layer(Box::new(Linear::new(784, 8, seed)));
+        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, seed)));
         sequential.add_layer(Box::new(Sigmoid::new()));
-        sequential.add_layer(Box::new(Linear::new(8, 10, seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, seed)));
         sequential.add_layer(Box::new(Softmax::new()));
+        
+        ModelV0 {
+            sequential
+        }
+    }
 
-        // let predictions = sequential.forward(&train_x);
-    
-        // println!("rows: {}", predictions.rows);
-        // println!("cols: {}", predictions.cols);
-        // println!("first 20 values: {:?}", &predictions.values[0..20]);
-
-        let epochs = 10;
-
+    fn train(&mut self, train_x: &Matrix, train_y: &Matrix, epochs: usize) {
         for epoch in 0..epochs {
-            let predictions = sequential.forward(&train_x);    
-
-            let y_class = one_hot_reverse(&train_y.values, train_y.cols);
-            let pred_class = one_hot_reverse(&predictions.values, predictions.cols);
-            let acc = accuracy(&y_class, &pred_class);
-
-            let loss = CrossEntropy::calculate(&train_y, &predictions);
+            let predictions = self.sequential.forward(&train_x);    
             let loss_grad = CrossEntropy::gradient(&train_y, &predictions);
-            
-            sequential.backward(&loss_grad);
+            self.sequential.backward(&loss_grad);
             
             if epoch % (epochs / 10) == 0 {
+                let loss = CrossEntropy::calculate(&train_y, &predictions);
+
+                let y_true = one_hot_reverse(&train_y.values, train_y.cols);
+                let y_pred = one_hot_reverse(&predictions.values, predictions.cols);
+                let acc = accuracy(&y_true, &y_pred);
+
                 println!("Epoch {}: Loss = {} Accuracy: {}", epoch, loss, acc);
             }
         }
+    }
 
+    fn test(&mut self, test_x: &Matrix, test_y: &Matrix) {        
+        let predictions = self.sequential.forward(&test_x);    
+
+        let loss = CrossEntropy::calculate(&test_y, &predictions);
+
+        let y_true = one_hot_reverse(&test_y.values, test_y.cols);
+        let y_pred = one_hot_reverse(&predictions.values, predictions.cols);
+        let acc = accuracy(&y_true, &y_pred);
+
+        println!("Loss = {} Accuracy: {}", loss, acc);
+    }
+}
+
+fn main() {
+    let train_path = Path::new("C:/Users/juan9/Documents/Education/Code/ML/datasets/mnist_csv/mnist_train.csv");
+    let result = read_csv(train_path, Some(10));
+
+    if let Ok((train_x, train_y)) = result {
+        let mut model_v0 = ModelV0::new(train_x.cols, 8, train_y.cols, Some(42));
+        model_v0.train(&train_x, &train_y, 10);
+
+        let test_path = Path::new("C:/Users/juan9/Documents/Education/Code/ML/datasets/mnist_csv/mnist_test.csv");
+        if let Ok((test_x, test_y)) = read_csv(test_path, None) {
+            model_v0.test(&test_x, &test_y);
+        }
     } else if let Err(err) = result {
         println!("error running example: {}", err);
         process::exit(1);
     } 
-
-
 }
 
 fn accuracy(y_true: &[f64], y_pred: &[f64]) -> f64 {
@@ -91,7 +111,16 @@ fn one_hot(items: &[f64]) -> Vec<f64> {
     return one_hot;
 }
 
-fn read_from_path(path: &Path, max_records: usize) -> Result<(Matrix, Matrix), Box<dyn Error>> {
+fn read_csv(path: &Path, max_records: Option<usize>) -> Result<(Matrix, Matrix), Box<dyn Error>> {
+    let (x_values, y_values) = get_data(path, max_records)?;
+
+    let x_matrix = Matrix::new((x_values.len() / 784, 784), x_values); 
+    let y_matrix = Matrix::new((y_values.len() / 10, 10), y_values);
+
+    Ok((x_matrix, y_matrix))
+}
+
+fn get_data(path: &Path, max_records: Option<usize>) -> Result<(Vec<f64>, Vec<f64>), Box<dyn Error>> {
     let mut rdr = csv::Reader::from_path(path)?;
     let mut x_values = Vec::new(); 
     let mut y_values = Vec::new();
@@ -104,18 +133,17 @@ fn read_from_path(path: &Path, max_records: usize) -> Result<(Matrix, Matrix), B
                 y_values.push(item_f64);
                 continue; 
             }
-            x_values.push(item_f64 / 255.0);
+            x_values.push(item_f64);
         } 
 
-        if n == max_records - 1 {
-            break;    
+        if let Some(max_records) = max_records {
+            if n == max_records - 1 {
+                break;    
+            }
         }
     }
 
     let one_hot_values = one_hot(&y_values);
- 
-    Ok((
-        Matrix::new((x_values.len() / 784, 784), x_values),
-        Matrix::new((one_hot_values.len() / 10, 10), one_hot_values),
-    ))
+    
+    Ok((x_values, one_hot_values))
 }
