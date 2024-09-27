@@ -10,7 +10,7 @@ fn main() {
         let seed = Some(42);
         let mut sequential = Sequential::new();
         sequential.add_layer(Box::new(Linear::new(784, 8, seed)));
-        sequential.add_layer(Box::new(Relu::new()));
+        sequential.add_layer(Box::new(Sigmoid::new()));
         sequential.add_layer(Box::new(Linear::new(8, 10, seed)));
         sequential.add_layer(Box::new(Softmax::new()));
 
@@ -24,14 +24,18 @@ fn main() {
 
         for epoch in 0..epochs {
             let predictions = sequential.forward(&train_x);    
+
+            let y_class = one_hot_reverse(&train_y.values, train_y.cols);
+            let pred_class = one_hot_reverse(&predictions.values, predictions.cols);
+            let acc = accuracy(&y_class, &pred_class);
+
             let loss = CrossEntropy::calculate(&train_y, &predictions);
-        
             let loss_grad = CrossEntropy::gradient(&train_y, &predictions);
             
             sequential.backward(&loss_grad);
             
             if epoch % (epochs / 10) == 0 {
-                println!("Epoch {}: Loss = {}", epoch, loss);
+                println!("Epoch {}: Loss = {} Accuracy: {}", epoch, loss, acc);
             }
         }
 
@@ -41,6 +45,35 @@ fn main() {
     } 
 
 
+}
+
+fn accuracy(y_true: &[f64], y_pred: &[f64]) -> f64 {
+    assert_eq!(y_true.len(), y_pred.len(), "array's length mismatch");
+    let correct = y_true
+        .iter()
+        .zip(y_pred.iter())
+        .filter(|(x1, x2)| x1 == x2).count();
+        
+    correct as f64 / y_true.len() as f64
+}
+
+fn one_hot_reverse(values: &[f64], chunk_size: usize) -> Vec<f64> {
+    let mut new_values = Vec::new();
+    
+    for chunk in values.chunks(chunk_size) {
+        let mut max_value = f64::NEG_INFINITY;
+        let mut index = 0;
+        
+        for (i, &value) in chunk.iter().enumerate() {
+            if value > max_value {
+                max_value = value;
+                index = i;
+            } 
+        }
+        new_values.push(index as f64);
+    }
+    
+    return new_values;
 }
 
 fn one_hot(items: &[f64]) -> Vec<f64> {
