@@ -1,6 +1,6 @@
 use std::{path::Path, error::Error, process};
 use rustnet::matrix::Matrix;
-use rustnet::metrics::accuracy;
+use rustnet::metrics::{accuracy, sensitivity, false_positive_rate};
 use rustnet::nn::{sequential::Sequential, activations::{Sigmoid}, linear::Linear, loss::{BinaryCrossEntropy, LossFunction}};
 
 fn main() {
@@ -15,6 +15,11 @@ fn main() {
     if let Ok((train_x, train_y)) = result {
         let mut model_v0 = ModelV0::new(train_x.cols, 7, train_y.cols, 1.0, Some(42));
         model_v0.train(&train_x, &train_y, 5000);
+
+        let (tpr, fpr) = model_v0.calculate_roc(&train_x, &train_y);
+        
+        println!("tpr: {:?}", tpr);
+        println!("fpr: {:?}", fpr);
     }  
 }
 
@@ -51,6 +56,26 @@ impl ModelV0 {
                 println!("Epoch {}: Loss = {} Accuracy: {}", epoch, loss, acc);
             }
         }
+    }
+
+    fn calculate_roc(&mut self, train_x: &Matrix, train_y: &Matrix) -> (Vec<f64>, Vec<f64>) {
+        let predictions = self.sequential.forward(&train_x);
+
+        let threshold_values = (0..=20).map(|i| i as f64 / 20.0).collect::<Vec<f64>>(); 
+        let mut tpr_values = vec![];
+        let mut fpr_values = vec![];
+
+        for &threshold in threshold_values.iter() {
+            let pred_values = round(&predictions.values, threshold);
+
+            let tpr = sensitivity(&train_y.values, &pred_values);
+            let fpr = false_positive_rate(&train_y.values, &pred_values);
+
+            tpr_values.push(tpr);
+            fpr_values.push(fpr);
+        }
+
+        (tpr_values, fpr_values)
     }
 }
 
