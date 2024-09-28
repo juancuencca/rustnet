@@ -19,7 +19,7 @@ impl Matrix {
         }
     } 
 
-    pub fn rand((rows, cols): (usize, usize), seed: Option<u64>) -> Matrix {
+    pub fn rand((rows, cols): (usize, usize), (l_range, r_range): (f64, f64),seed: Option<u64>) -> Matrix {
         let mut rng: Box<dyn RngCore> = match seed {
             Some(seed) => Box::new(StdRng::seed_from_u64(seed)),
             None => Box::new(rand::thread_rng()),
@@ -27,7 +27,7 @@ impl Matrix {
 
         let values = (0..(rows * cols))
             .into_iter()
-            .map(|_| rng.gen_range(0.0..=1.0))
+            .map(|_| rng.gen_range(l_range..=r_range))
             .collect::<Vec<f64>>(); 
         
         Matrix { 

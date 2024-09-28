@@ -9,15 +9,15 @@ pub struct Linear {
 }
 
 impl Linear {
-    pub fn new(input_size: usize, output_size: usize, seed: Option<u64>) -> Linear {
-        let weights = Matrix::rand((input_size, output_size), seed);
+    pub fn new(input_size: usize, output_size: usize, learning_rate: f64, (l_range, r_range): (f64, f64), seed: Option<u64>) -> Linear {
+        let weights = Matrix::rand((input_size, output_size), (l_range, r_range), seed);
         let biases = Matrix::zeros((1, output_size));
 
         Linear { 
             weights, 
             biases, 
             cached_input: None,
-            learning_rate: 1.0
+            learning_rate
         }
     }
 

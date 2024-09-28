@@ -6,11 +6,13 @@ struct ModelV0 {
 }
 
 impl ModelV0 {
-    fn new(input_size: usize, hidden_units: usize, output_size:usize, seed: Option<u64>) -> ModelV0 {
+    fn new(input_size: usize, hidden_units: usize, output_size:usize, lr: f64, seed: Option<u64>) -> ModelV0 {
         let mut sequential = Sequential::new();
-        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, seed)));
+        let (l_range, r_range) = (0.0, 1.0);
+
+        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, lr, (l_range, r_range), seed)));
         sequential.add_layer(Box::new(Sigmoid::new()));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, lr, (l_range, r_range), seed)));
         sequential.add_layer(Box::new(Softmax::new()));
         
         ModelV0 {
@@ -54,7 +56,7 @@ fn main() {
     let result = read_csv(train_path, Some(10));
 
     if let Ok((train_x, train_y)) = result {
-        let mut model_v0 = ModelV0::new(train_x.cols, 8, train_y.cols, Some(42));
+        let mut model_v0 = ModelV0::new(train_x.cols, 8, train_y.cols, 1.0, Some(42));
         model_v0.train(&train_x, &train_y, 10);
 
         let test_path = Path::new("C:/Users/juan9/Documents/Education/Code/ML/datasets/mnist_csv/mnist_test.csv");

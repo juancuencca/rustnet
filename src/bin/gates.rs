@@ -10,12 +10,14 @@ pub struct ModelV0 {
 }
 
 impl ModelV0 {
-    pub fn new(input_size: usize, hidden_units: usize, output_size: usize, seed: Option<u64>) -> ModelV0 {
+    pub fn new(input_size: usize, hidden_units: usize, output_size: usize, lr: f64, seed: Option<u64>) -> ModelV0 {
         let mut sequential = Sequential::new();
-        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, seed)));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, seed)));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, seed)));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, seed)));
+        let (l_range, r_range) = (0.0, 1.0);
+
+        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, lr, (l_range, r_range), seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, lr, (l_range, r_range), seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, lr, (l_range, r_range), seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, lr, (l_range, r_range), seed)));
         sequential.add_layer(Box::new(Sigmoid::new()));
 
         ModelV0 { 
@@ -58,9 +60,8 @@ fn main() {
         1.0,
     ]);
 
-    let mut model_v0 = ModelV0::new(2, 2, 1,Some(42));
+    let mut model_v0 = ModelV0::new(train_x.cols, 2, train_y.cols, 1.0, Some(42));
     model_v0.train(&train_x, &train_y, 100, BinaryCrossEntropy);
-
 
     let predictions = model_v0.predict(&train_x);
     println!("{predictions:#?}");
