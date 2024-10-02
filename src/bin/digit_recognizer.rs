@@ -1,34 +1,37 @@
 use std::{error::Error, path::Path, process};
-use rustnet::{matrix::Matrix, nn::{activations::{Sigmoid, Softmax}, linear::Linear, loss::{CrossEntropy, MulticlassLossFunction}, sequential::Sequential}};
+use rustnet::{matrix::Matrix, nn::{activations::{Sigmoid, Softmax}, linear::Linear, loss::{CrossEntropy, Loss}, sequential::Sequential}};
 
-struct ModelV0 {
+const L_RNG: f64 = 0.0;
+const R_RNG: f64 = 1.0;
+
+struct DigitRecognizerModel {
     sequential: Sequential,
 }
 
-impl ModelV0 {
-    fn new(input_size: usize, hidden_units: usize, output_size:usize, lr: f64, seed: Option<u64>) -> ModelV0 {
+impl DigitRecognizerModel {
+    fn new(input_size: usize, hidden_units: usize, output_size:usize, lr: f64, seed: Option<u64>) -> DigitRecognizerModel {
         let mut sequential = Sequential::new();
-        let (l_range, r_range) = (0.0, 1.0);
 
-        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, lr, (l_range, r_range), seed)));
+        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, lr, (L_RNG, R_RNG), seed)));
         sequential.add_layer(Box::new(Sigmoid::new()));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, lr, (l_range, r_range), seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, lr, (L_RNG, R_RNG), seed)));
         sequential.add_layer(Box::new(Softmax::new()));
         
-        ModelV0 {
+        DigitRecognizerModel {
             sequential
         }
     }
 
-    fn train(&mut self, train_x: &Matrix, train_y: &Matrix, epochs: usize) {
+    fn train(&mut self, train_x: &Matrix, train_y: &Matrix, epochs: usize, loss_fn: &mut dyn Loss) {
         for epoch in 0..epochs {
             let predictions = self.sequential.forward(&train_x);    
-            let loss_grad = CrossEntropy::gradient(&train_y, &predictions);
+
+            let loss = loss_fn.compute(&train_y, &predictions);
+            let loss_grad = loss_fn.gradient();
+
             self.sequential.backward(&loss_grad);
             
             if epoch % (epochs / 10) == 0 {
-                let loss = CrossEntropy::calculate(&train_y, &predictions);
-
                 let y_true = one_hot_reverse(&train_y.values, train_y.cols);
                 let y_pred = one_hot_reverse(&predictions.values, predictions.cols);
                 let acc = accuracy(&y_true, &y_pred);
@@ -38,10 +41,10 @@ impl ModelV0 {
         }
     }
 
-    fn test(&mut self, test_x: &Matrix, test_y: &Matrix) {        
+    fn test(&mut self, test_x: &Matrix, test_y: &Matrix, loss_fn: &mut dyn Loss) {        
         let predictions = self.sequential.forward(&test_x);    
 
-        let loss = CrossEntropy::calculate(&test_y, &predictions);
+        let loss = loss_fn.compute(&test_y, &predictions);
 
         let y_true = one_hot_reverse(&test_y.values, test_y.cols);
         let y_pred = one_hot_reverse(&predictions.values, predictions.cols);
@@ -56,12 +59,13 @@ fn main() {
     let result = read_csv(train_path, Some(10));
 
     if let Ok((train_x, train_y)) = result {
-        let mut model_v0 = ModelV0::new(train_x.cols, 8, train_y.cols, 1.0, Some(42));
-        model_v0.train(&train_x, &train_y, 10);
+        let mut model = DigitRecognizerModel::new(train_x.cols, 8, train_y.cols, 1.0, Some(42));
+        let mut loss_fn = CrossEntropy::new();
+        model.train(&train_x, &train_y, 10, &mut loss_fn);
 
         let test_path = Path::new("C:/Users/juan9/Documents/Education/Code/ML/datasets/mnist_csv/mnist_test.csv");
         if let Ok((test_x, test_y)) = read_csv(test_path, None) {
-            model_v0.test(&test_x, &test_y);
+            model.test(&test_x, &test_y, &mut loss_fn);
         }
     } else if let Err(err) = result {
         println!("error running example: {}", err);

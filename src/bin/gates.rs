@@ -1,36 +1,34 @@
-use rustnet::nn::{
-    activations::Sigmoid, linear::Linear, loss::{
-        LossFunction, BinaryCrossEntropy
-    }, sequential::Sequential
-};
+use rustnet::nn::{activations::Sigmoid, linear::Linear, loss::{Loss, BCELoss}, sequential::Sequential};
 use rustnet::matrix::Matrix;
 
-pub struct ModelV0 {
+const L_RNG: f64 = 0.0;
+const R_RNG: f64 = 1.0;
+
+pub struct GatesModel {
     sequential: Sequential,
 }
 
-impl ModelV0 {
-    pub fn new(input_size: usize, hidden_units: usize, output_size: usize, lr: f64, seed: Option<u64>) -> ModelV0 {
+impl GatesModel {
+    pub fn new(input_size: usize, hidden_units: usize, output_size: usize, lr: f64, seed: Option<u64>) -> GatesModel {
         let mut sequential = Sequential::new();
-        let (l_range, r_range) = (0.0, 1.0);
 
-        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, lr, (l_range, r_range), seed)));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, lr, (l_range, r_range), seed)));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, lr, (l_range, r_range), seed)));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, lr, (l_range, r_range), seed)));
+        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, lr, (L_RNG, R_RNG), seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, lr, (L_RNG, R_RNG), seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, lr, (L_RNG, R_RNG), seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, lr, (L_RNG, R_RNG), seed)));
         sequential.add_layer(Box::new(Sigmoid::new()));
 
-        ModelV0 { 
+        GatesModel { 
             sequential 
         }
     }
 
-    pub fn train<F: LossFunction>(&mut self, train_x: &Matrix, train_y: &Matrix, epochs: usize, _loss_function: F) {
+    pub fn train(&mut self, train_x: &Matrix, train_y: &Matrix, epochs: usize, loss_fn: &mut dyn Loss) {
         for epoch in 0..epochs {
             let predictions = self.sequential.forward(&train_x);    
-            let loss = F::calculate(&train_y, &predictions);
+            let loss = loss_fn.compute(&train_y, &predictions);
         
-            let loss_grad = F::gradient(&train_y, &predictions);
+            let loss_grad = loss_fn.gradient();
             
             self.sequential.backward(&loss_grad);
             
@@ -59,10 +57,16 @@ fn main() {
         1.0,
         1.0,
     ]);
+    
+    let input_size = train_x.cols;
+    let hidden_units = 2;
+    let output_size = train_y.cols;
+    let learning_rate = 1.0;
+    let seed = Some(42);
 
-    let mut model_v0 = ModelV0::new(train_x.cols, 2, train_y.cols, 1.0, Some(42));
-    model_v0.train(&train_x, &train_y, 100, BinaryCrossEntropy);
+    let mut model = GatesModel::new(input_size, hidden_units, output_size, learning_rate, seed);
+    
+    model.train(&train_x, &train_y, 100, &mut BCELoss::new());
 
-    let predictions = model_v0.predict(&train_x);
-    println!("{predictions:#?}");
+    println!("{:?}", model.predict(&train_x));
 }
