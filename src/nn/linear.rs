@@ -60,7 +60,7 @@ mod tests {
     #[test]
     fn test_linear_forward_success() {
         let seed = 42;
-        let mut linear = Linear::new(2, 2, Some(seed));
+        let mut linear = Linear::new(2, 2, 1.0, (1.0, 1.0), Some(seed));
         let input = Matrix::new((1, 2), vec![
             0.5, 0.5
         ]);

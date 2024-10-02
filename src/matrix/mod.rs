@@ -231,14 +231,14 @@ mod tests {
     fn test_matrix_rand_creation_success() {
         let seed = 42;
         
-        let f_matrix = Matrix::rand((2, 2), Some(seed));
+        let f_matrix = Matrix::rand((2, 2), (0.0, 1.0), Some(seed));
         assert_eq!((f_matrix.rows, f_matrix.cols), (2, 2));
         assert_eq!(f_matrix.values, vec![
             0.5265574090027739, 0.542725209903144, 
             0.636465099143895, 0.4059017582307768
         ]);
     
-        let s_matrix = Matrix::rand((2, 1), Some(seed));
+        let s_matrix = Matrix::rand((2, 1), (0.0, 1.0), Some(seed));
         assert_eq!((s_matrix.rows, s_matrix.cols), (2, 1));
         assert_eq!(s_matrix.values, vec![
             0.5265574090027739, 
