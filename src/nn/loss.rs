@@ -211,13 +211,14 @@ impl AUCReshaping {
 
     fn derivative(&self, target: f64, predicted: f64) -> f64 {
         let predicted = predicted.clamp(EPSILON, 1.0 - EPSILON);
+    
         let b_i = if target == 1.0 && predicted < self.thetamax {
             self.n
         } else {
             0.0
         };
-
-        (predicted - target) / ((predicted - b_i) * (1.0 - predicted + b_i))
+    
+        -target / (predicted - b_i) + (1.0 - target) / (1.0 - predicted + b_i)
     }
 }
 
