@@ -58,7 +58,7 @@ impl Loss for MSELoss {
             .map(|(&target, &predicted)| Self::derivative(target, predicted) / n)
             .collect::<Vec<f64>>();
 
-        Matrix::new((grad_values.len(), 1), grad_values)
+        Matrix::new(grad_values.len(), 1, grad_values)
     }
 }
 
@@ -116,7 +116,7 @@ impl Loss for MAELoss {
             .map(|(&target, &predicted)| Self::derivative(target, predicted) / n)
             .collect::<Vec<f64>>();
 
-        Matrix::new((grad_values.len(), 1), grad_values)
+        Matrix::new(grad_values.len(), 1, grad_values)
     }
 }
 
@@ -176,7 +176,7 @@ impl Loss for BCELoss {
             .map(|(&target, &predicted)| Self::derivative(target, predicted) / n)
             .collect::<Vec<f64>>();
 
-        Matrix::new((grad_values.len(), 1), grad_values)
+        Matrix::new(grad_values.len(), 1, grad_values)
     }
 }
 
@@ -252,7 +252,7 @@ impl Loss for AUCReshaping {
             .map(|(&target, &predicted)| self.derivative(target, predicted) / n)
             .collect::<Vec<f64>>();
 
-        Matrix::new((grad_values.len(), 1), grad_values)
+        Matrix::new(grad_values.len(), 1, grad_values)
     }
 }
 
@@ -321,7 +321,7 @@ impl Loss for CrossEntropy {
             })
             .collect::<Vec<f64>>();
 
-        Matrix::new((grad_values.len() / target.cols, target.cols), grad_values)
+        Matrix::new(grad_values.len() / target.cols, target.cols, grad_values)
     }
 }
 
@@ -331,8 +331,8 @@ mod tests {
 
     #[test]
     fn test_bce_loss_success() {
-        let target = Matrix::new((3, 1), vec![1.0, 0.0, 1.0]);
-        let predicted = Matrix::new((3, 1), vec![0.8, 0.2, 0.7]);
+        let target = Matrix::new(3, 1, vec![1.0, 0.0, 1.0]);
+        let predicted = Matrix::new(3, 1, vec![0.8, 0.2, 0.7]);
         
         let mut bce_loss = BCELoss::new();
         let loss = bce_loss.compute(&target, &predicted);

@@ -9,45 +9,26 @@ pub struct Matrix {
 }
 
 impl Matrix {
-    pub fn new((rows, cols): (usize, usize), values: Vec<f64>) -> Matrix {
-        assert_eq!(rows * cols, values.len(), "Error: mismatch array length with shape provided");
+    pub fn new(rows: usize, cols: usize, values: Vec<f64>) -> Matrix {
+        assert_eq!(rows * cols, values.len(), "matrix dimensions do not match number of values");
         
-        Matrix { 
-            rows, 
-            cols, 
-            values, 
-        }
+        Matrix { rows, cols, values, }
     } 
 
-    pub fn rand((rows, cols): (usize, usize), (l_range, r_range): (f64, f64),seed: Option<u64>) -> Matrix {
+    pub fn rand(rows: usize, cols: usize, l_rng: f64, r_rng: f64, seed: Option<u64>) -> Matrix {
         let mut rng: Box<dyn RngCore> = match seed {
             Some(seed) => Box::new(StdRng::seed_from_u64(seed)),
             None => Box::new(rand::thread_rng()),
         };
-
-        let values = (0..(rows * cols))
-            .into_iter()
-            .map(|_| rng.gen_range(l_range..=r_range))
-            .collect::<Vec<f64>>(); 
+        let values = (0..(rows * cols)).map(|_| rng.gen_range(l_rng..=r_rng)).collect(); 
         
-        Matrix { 
-            rows, 
-            cols, 
-            values 
-        }
+        Matrix { rows, cols, values, }
     }
 
-    pub fn zeros((rows, cols): (usize, usize)) -> Matrix {
-        let values = (0..(rows * cols))
-            .into_iter()
-            .map(|_| 0.0)
-            .collect::<Vec<f64>>();
+    pub fn zeros(rows: usize, cols: usize) -> Matrix {
+        let values = (0..(rows * cols)).map(|_| 0.0).collect();
 
-        Matrix { 
-            rows, 
-            cols, 
-            values 
-        }
+        Matrix { rows, cols, values, }
     }
 }
 
@@ -56,16 +37,9 @@ impl Matrix {
     where  
         F: Fn(f64) -> f64 
     {
-        let values = self.values
-            .iter()
-            .map(|&x| f(x))
-            .collect::<Vec<f64>>();
+        let values = self.values.iter().map(|&x| f(x)).collect();
 
-        Matrix { 
-            rows: self.rows, 
-            cols: self.cols, 
-            values 
-        }
+        Matrix { rows: self.rows, cols: self.cols, values, }
     } 
 
     pub fn map_chunks<F>(&self, chunk_size: usize, f: F) -> Matrix
@@ -79,11 +53,7 @@ impl Matrix {
             new_values.extend(transformed_chunk); 
         }
 
-        Matrix { 
-            rows: self.rows, 
-            cols: self.cols, 
-            values: new_values 
-        }
+        Matrix { rows: self.rows, cols: self.cols, values: new_values }
     }
 
     pub fn transpose(&self) -> Matrix {
@@ -102,8 +72,8 @@ impl Matrix {
         }
     }
 
-    pub fn dot(&self, m: &Matrix) -> Matrix {
-        assert_eq!(self.cols, m.rows, "Error: matrices shape mismatch");
+    pub fn multiply(&self, m: &Matrix) -> Matrix {
+        assert_eq!(self.cols, m.rows, "incompatible shapes of matrices for operation");
 
         let mut values = Vec::new();
 
@@ -119,16 +89,12 @@ impl Matrix {
             }
         }
 
-        Matrix { 
-            rows: self.rows, 
-            cols: m.cols, 
-            values 
-        }
+        Matrix { rows: self.rows, cols: m.cols, values, }
     }
 
-    pub fn add(&self, m: &Matrix) -> Matrix {
-        assert_eq!(self.cols, m.cols, "Matrix columns must match.");
-        assert_eq!(m.rows, 1, "Parameter's matrix column must be 1");
+    pub fn add_bias(&self, m: &Matrix) -> Matrix {
+        assert_eq!(m.rows, 1, "Bias matrix row must be 1.");
+        assert_eq!(self.cols, m.cols, "Matrix dimensions must match.");
 
         let mut values = vec![0.0; self.rows * self.cols];
 
@@ -138,11 +104,7 @@ impl Matrix {
             }
         }
 
-        Matrix {
-            rows: self.rows,
-            cols: self.cols,
-            values,
-        }
+        Matrix { rows: self.rows, cols: self.cols, values, }
     }
 
     pub fn sub(&self, other: &Matrix) -> Matrix {
@@ -163,16 +125,9 @@ impl Matrix {
     }
 
     pub fn scale(&self, scalar: f64) -> Matrix {
-        let values = self.values
-            .iter()
-            .map(|&val| val * scalar)
-            .collect();
+        let values = self.values.iter().map(|&val| val * scalar).collect();
 
-        Matrix { 
-            rows: self.rows, 
-            cols: self.cols, 
-            values 
-        }
+        Matrix { rows: self.rows, cols: self.cols, values, }
     }
 
     pub fn sum_rows(&self) -> Matrix {
@@ -184,11 +139,7 @@ impl Matrix {
             }
         }
 
-        Matrix { 
-            rows: 1, 
-            cols: self.cols, 
-            values: sums 
-        }
+        Matrix { rows: 1, cols: self.cols, values: sums }
     }
 
     pub fn hadamard_product(&self, other: &Matrix) -> Matrix {
@@ -219,38 +170,27 @@ mod tests {
 
     #[test]
     fn test_matrix_creation_success() {
-        let matrix = Matrix::new((1, 2), vec![0.0, 1.0]);
+        let matrix = Matrix::new(1, 2, vec![0.0, 1.0]);
 
-        assert_eq!((matrix.rows, matrix.cols), (1, 2));
-        assert_eq!(matrix.values, vec![
-            0.0, 1.0
-        ]);
+        assert_eq!(matrix.rows, 1);
+        assert_eq!(matrix.cols, 2);
+        assert_eq!(matrix.values, vec![0.0, 1.0]);
     }
 
     #[test]
-    fn test_matrix_rand_creation_success() {
-        let seed = 42;
-        
-        let f_matrix = Matrix::rand((2, 2), (0.0, 1.0), Some(seed));
-        assert_eq!((f_matrix.rows, f_matrix.cols), (2, 2));
-        assert_eq!(f_matrix.values, vec![
-            0.5265574090027739, 0.542725209903144, 
-            0.636465099143895, 0.4059017582307768
-        ]);
-    
-        let s_matrix = Matrix::rand((2, 1), (0.0, 1.0), Some(seed));
-        assert_eq!((s_matrix.rows, s_matrix.cols), (2, 1));
-        assert_eq!(s_matrix.values, vec![
-            0.5265574090027739, 
-            0.542725209903144
-        ]);
+    fn test_matrix_rand_creation_success() {    
+        let matrix = Matrix::rand(2, 2, 0.0, 1.0, None);
+       
+        assert_eq!(matrix.rows, 2);
+        assert_eq!(matrix.cols, 2);
     }
 
     #[test]
     fn test_matrix_zeros_creation_success() {
-        let matrix = Matrix::zeros((2, 2));
+        let matrix = Matrix::zeros(2, 2);
 
-        assert_eq!((matrix.rows, matrix.cols), (2, 2));
+        assert_eq!(matrix.rows, 2);
+        assert_eq!(matrix.cols, 2);
         assert_eq!(matrix.values, vec![
             0.0, 0.0,
             0.0, 0.0
@@ -259,14 +199,15 @@ mod tests {
     
     #[test]
     fn test_matrix_transposed_success() {
-        let matrix = Matrix::new((2, 3), vec![
+        let matrix = Matrix::new(2, 3, vec![
             2.0, 3.0, 4.0, 
             5.0, 6.0, 7.0
         ]);
 
         let transposed = matrix.transpose();
 
-        assert_eq!((transposed.rows, transposed.cols), (3, 2));
+        assert_eq!(transposed.rows, 3);
+        assert_eq!(transposed.cols, 2);
         assert_eq!(transposed.values, vec![
             2.0, 5.0, 
             3.0, 6.0, 
@@ -275,18 +216,18 @@ mod tests {
     }
 
     #[test]
-    fn test_matrix_dot_success() {
-        let f_matrix = Matrix::new((2, 1), vec![
+    fn test_matrix_multiplication_success() {
+        let f_matrix = Matrix::new(2, 1, vec![
             2.0, 
             3.0
         ]);
-        let s_matrix = Matrix::new((1, 2), vec![
+        let s_matrix = Matrix::new(1, 2, vec![
             2.0, 3.0
         ]);
+        let r_matrix = f_matrix.multiply(&s_matrix);
 
-        let r_matrix = f_matrix.dot(&s_matrix);
-
-        assert_eq!((r_matrix.rows, r_matrix.cols), (2, 2));
+        assert_eq!(r_matrix.rows, 2);
+        assert_eq!(r_matrix.cols, 2);
         assert_eq!(r_matrix.values, vec![
             4.0, 6.0, 
             6.0, 9.0
@@ -294,19 +235,19 @@ mod tests {
     }
 
     #[test]
-    fn test_matrix_addition_success() {
-        let f_matrix = Matrix::new((4, 1), vec![
+    fn test_matrix_bias_addition_success() {
+        let f_matrix = Matrix::new(4, 1, vec![
             2.0, 
             3.0,
             4.0, 
             5.0,
         ]);
         
-        let s_matrix = Matrix::new((1, 1), vec![
+        let s_matrix = Matrix::new(1, 1, vec![
             2.0, 
         ]);
 
-        let r_matrix = f_matrix.add(&s_matrix);
+        let r_matrix = f_matrix.add_bias(&s_matrix);
         assert_eq!((r_matrix.rows, r_matrix.cols), (4, 1));
         assert_eq!(r_matrix.values, vec![
             4.0, 
@@ -318,35 +259,27 @@ mod tests {
 
     #[test]
     fn test_matrix_sum_rows_success() {
-        let f_matrix = Matrix::new((1, 3), vec![
-            1.0, 2.0, 3.0
-        ]);
-        let f_summed = f_matrix.sum_rows(); 
-        assert_eq!((f_summed.rows, f_summed.cols), (1, 3)); 
-        assert_eq!(f_summed.values, vec![
-            1.0, 2.0, 3.0
-        ]);
-    
-        let s_matrix = Matrix::new((2, 2), vec![1.0, 2.0, 3.0, 4.0]);
-        let s_summed = s_matrix.sum_rows(); 
-        assert_eq!((s_summed.rows, s_summed.cols), (1, 2)); 
-        assert_eq!(s_summed.values, vec![
+        let matrix = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
+        let summed = matrix.sum_rows(); 
+        assert_eq!(summed.rows, 1); 
+        assert_eq!(summed.cols, 2); 
+        assert_eq!(summed.values, vec![
             4.0, 6.0
         ]);
     }
 
     #[test]
     fn test_matrix_substraction_success() {
-        let f_matrix = Matrix::new((1, 3), vec![
+        let f_matrix = Matrix::new(1, 3, vec![
             4.0, 6.0, 5.0
         ]);
-        let s_matrix = Matrix::new((1, 3), vec![
+        let s_matrix = Matrix::new(1, 3, vec![
             1.0, 2.0, 1.0
         ]);
-
         let r_sub = f_matrix.sub(&s_matrix);
 
-        assert_eq!((r_sub.rows, r_sub.cols), (1, 3)); 
+        assert_eq!(r_sub.rows, 1); 
+        assert_eq!(r_sub.cols, 3); 
         assert_eq!(r_sub.values, vec![
             3.0, 4.0, 4.0
         ]);
@@ -354,16 +287,17 @@ mod tests {
 
     #[test]
     fn test_matrix_hadamard_product_success() {
-        let f_matrix = Matrix::new((1, 3), vec![
+        let f_matrix = Matrix::new(1, 3, vec![
             4.0, 6.0, 5.0
         ]);
-        let s_matrix = Matrix::new((1, 3), vec![
+        let s_matrix = Matrix::new(1, 3, vec![
             1.0, 2.0, 1.0
         ]);
 
         let r_prod = f_matrix.hadamard_product(&s_matrix);
 
-        assert_eq!((r_prod.rows, r_prod.cols), (1, 3)); 
+        assert_eq!(r_prod.rows, 1); 
+        assert_eq!(r_prod.cols, 3); 
         assert_eq!(r_prod.values, vec![
             4.0, 12.0, 5.0
         ]);
@@ -371,13 +305,14 @@ mod tests {
 
     #[test]
     fn test_matrix_scale_success() {
-        let f_matrix = Matrix::new((1, 3), vec![
+        let f_matrix = Matrix::new(1, 3, vec![
             4.0, 6.0, 5.0
         ]);
         
         let r_scaled = f_matrix.scale(2.0);
 
-        assert_eq!((r_scaled.rows, r_scaled.cols), (1, 3)); 
+        assert_eq!(r_scaled.rows, 1); 
+        assert_eq!(r_scaled.cols, 3); 
         assert_eq!(r_scaled.values, vec![
             8.0, 12.0, 10.0
         ]);

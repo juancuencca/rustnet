@@ -12,10 +12,10 @@ impl GatesModel {
     pub fn new(input_size: usize, hidden_units: usize, output_size: usize, lr: f64, seed: Option<u64>) -> GatesModel {
         let mut sequential = Sequential::new();
 
-        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, lr, (L_RNG, R_RNG), seed)));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, lr, (L_RNG, R_RNG), seed)));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, lr, (L_RNG, R_RNG), seed)));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, lr, (L_RNG, R_RNG), seed)));
+        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, L_RNG, R_RNG, lr, seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, L_RNG, R_RNG, lr, seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, hidden_units, L_RNG, R_RNG, lr, seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, L_RNG, R_RNG, lr, seed)));
         sequential.add_layer(Box::new(Sigmoid::new()));
 
         GatesModel { 
@@ -44,14 +44,14 @@ impl GatesModel {
 }
 
 fn main() {
-    let train_x = Matrix::new((4, 2), vec![
+    let train_x = Matrix::new(4, 2, vec![
         0.0, 0.0,
         0.0, 1.0,
         1.0, 0.0,
         1.0, 1.0,
     ]);
 
-    let train_y = Matrix::new((4, 1), vec![
+    let train_y = Matrix::new(4, 1, vec![
         0.0,
         1.0,
         1.0,

@@ -13,9 +13,9 @@ struct TitanicModel {
 impl TitanicModel {
     fn new(input_size: usize, hidden_units: usize, output_size:usize, lr: f64, seed: Option<u64>) -> TitanicModel {
         let mut sequential = Sequential::new();
-        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, lr, (L_RNG, R_RNG), seed)));
+        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, L_RNG, R_RNG, lr, seed)));
         sequential.add_layer(Box::new(Sigmoid::new()));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, lr, (L_RNG, R_RNG), seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, L_RNG, R_RNG, lr, seed)));
         sequential.add_layer(Box::new(Sigmoid::new()));
         
         TitanicModel {
@@ -127,8 +127,8 @@ fn read_csv(path: &Path) -> Result<(Matrix, Matrix), Box<dyn Error>> {
         } 
     }
 
-    let x_matrix = Matrix::new((x_values.len() / 45, 45), x_values); 
-    let y_matrix = Matrix::new((y_values.len(), 1), y_values);
+    let x_matrix = Matrix::new(x_values.len() / 45, 45, x_values); 
+    let y_matrix = Matrix::new(y_values.len(), 1, y_values);
 
     Ok((x_matrix, y_matrix))
 }

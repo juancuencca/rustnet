@@ -12,9 +12,9 @@ impl DigitRecognizerModel {
     fn new(input_size: usize, hidden_units: usize, output_size:usize, lr: f64, seed: Option<u64>) -> DigitRecognizerModel {
         let mut sequential = Sequential::new();
 
-        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, lr, (L_RNG, R_RNG), seed)));
+        sequential.add_layer(Box::new(Linear::new(input_size, hidden_units, L_RNG, R_RNG, lr, seed)));
         sequential.add_layer(Box::new(Sigmoid::new()));
-        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, lr, (L_RNG, R_RNG), seed)));
+        sequential.add_layer(Box::new(Linear::new(hidden_units, output_size, L_RNG, R_RNG, lr, seed)));
         sequential.add_layer(Box::new(Softmax::new()));
         
         DigitRecognizerModel {
@@ -120,8 +120,8 @@ fn one_hot(items: &[f64]) -> Vec<f64> {
 fn read_csv(path: &Path, max_records: Option<usize>) -> Result<(Matrix, Matrix), Box<dyn Error>> {
     let (x_values, y_values) = get_data(path, max_records)?;
 
-    let x_matrix = Matrix::new((x_values.len() / 784, 784), x_values); 
-    let y_matrix = Matrix::new((y_values.len() / 10, 10), y_values);
+    let x_matrix = Matrix::new(x_values.len() / 784, 784, x_values); 
+    let y_matrix = Matrix::new(y_values.len() / 10, 10, y_values);
 
     Ok((x_matrix, y_matrix))
 }
