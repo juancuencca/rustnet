@@ -1,7 +1,7 @@
 use std::{path::Path, error::Error, process};
 use rustnet::matrix::Matrix;
 use rustnet::metrics::{accuracy, sensitivity, false_positive_rate, specificity};
-use rustnet::nn::{sequential::Sequential, activations::Sigmoid, linear::Linear, loss::{Loss, BCELoss}};
+use rustnet::nn::{sequential::Sequential, activations::Sigmoid, linear::Linear, loss::{Loss, BCELoss, AUCReshaping}};
 
 const L_RNG: f64 = -0.5;
 const R_RNG: f64 = 0.5;
@@ -25,6 +25,7 @@ impl TitanicModel {
 
     fn train(&mut self, train_x: &Matrix, train_y: &Matrix, epochs: usize, loss_fn: &mut dyn Loss) {
         for epoch in 0..epochs {
+            
             let predictions = self.sequential.forward(&train_x);    
             
             let loss = loss_fn.compute(&train_y, &predictions);
@@ -75,18 +76,27 @@ fn main() {
     }
 
     if let Ok((train_x, train_y)) = result {
-        // let mut auc_loss_fn = AUCReshaping::new(1e-1, 0.98);   
+        let mut auc_loss_fn = AUCReshaping::new(1e-4, 0.98);   
         let mut bce_loss_fn = BCELoss::new();
 
+        let epochs = 2000;
+
         let input_size = train_x.cols;
-        let hidden_units = 7;
+        let hidden_units = 4;
         let output_size = train_y.cols;
-        let learning_rate = 1.0;
+        let lr = 1e-1;
         let seed = Some(42);
 
-        let mut model = TitanicModel::new(input_size, hidden_units, output_size, learning_rate, seed);
-        model.train(&train_x, &train_y, 2000, &mut bce_loss_fn);
-        
+        // Model using bce
+        let mut model = TitanicModel::new(input_size, hidden_units, output_size, lr, seed);
+        model.train(&train_x, &train_y, epochs, &mut bce_loss_fn);
+        let (tpr, fpr) = model.calculate_roc(&train_x, &train_y, 10);
+        println!("tpr: {:?}", tpr);
+        println!("fpr: {:?}", fpr);
+
+        // Model using auc reshaping
+        let mut model = TitanicModel::new(input_size, hidden_units, output_size, lr, seed);
+        model.train(&train_x, &train_y, epochs, &mut auc_loss_fn);
         let (tpr, fpr) = model.calculate_roc(&train_x, &train_y, 10);
         println!("tpr: {:?}", tpr);
         println!("fpr: {:?}", fpr);
