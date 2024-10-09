@@ -200,26 +200,45 @@ impl AUCReshaping {
     fn loss(&self, target: f64, predicted: f64) -> f64 {
         let predicted = predicted.clamp(EPSILON, 1.0 - EPSILON);
 
-        let b_i = if target == 1.0 && predicted < self.thetamax {
+        let b = if target == 1.0 && predicted < self.thetamax {
             self.n
         } else {
             0.0
         };
 
-        -target * (predicted - b_i).ln() - (1.0 - target) * (1.0 - predicted + b_i).ln()
+        let safe_val = (predicted - b).max(EPSILON);
+
+        -target * safe_val.ln() - (1.0 - target) * (1.0 - predicted).ln()
     }
 
     fn derivative(&self, target: f64, predicted: f64) -> f64 {
+        // Clamp predicted between EPSILON and 1 - EPSILON to avoid extreme values
         let predicted = predicted.clamp(EPSILON, 1.0 - EPSILON);
     
-        let b_i = if target == 1.0 && predicted < self.thetamax {
+        // Calculate b based on the conditions
+        let b = if target == 1.0 && predicted < self.thetamax {
             self.n
         } else {
             0.0
         };
     
-        -target / (predicted - b_i) + (1.0 - target) / (1.0 - predicted + b_i)
+        // If predicted > b, calculate the derivative using both terms
+        if predicted > b {
+            // Derivative of the first term: -target / (predicted - b)
+            let first_term = -target / (predicted - b).max(EPSILON);
+    
+            // Derivative of the second term: (1 - target) / (1 - predicted)
+            let second_term = (1.0 - target) / (1.0 - predicted);
+    
+            // Return the sum of both derivatives
+            first_term + second_term
+        } else {
+            // When predicted <= b, derivative of first term is zero
+            // Only the second term remains: (1 - target) / (1 - predicted)
+            (1.0 - target) / (1.0 - predicted)
+        }
     }
+    
 }
 
 impl Loss for AUCReshaping {

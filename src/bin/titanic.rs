@@ -76,28 +76,35 @@ fn main() {
     }
 
     if let Ok((train_x, train_y)) = result {
-        let mut auc_loss_fn = AUCReshaping::new(1e-4, 0.98);   
+        let mut auc_loss_fn = AUCReshaping::new(2e-1, 0.98);   
         let mut bce_loss_fn = BCELoss::new();
 
         let epochs = 2000;
 
         let input_size = train_x.cols;
-        let hidden_units = 4;
+        let hidden_units = 7;
         let output_size = train_y.cols;
-        let lr = 1e-1;
+        let lr = 1.0;
         let seed = Some(42);
 
         // Model using bce
+        println!("-----------------------------------------------------------------------");
+        println!("------------------------BINARY CROSS ENTROPY---------------------------");
+        println!("-----------------------------------------------------------------------");
         let mut model = TitanicModel::new(input_size, hidden_units, output_size, lr, seed);
         model.train(&train_x, &train_y, epochs, &mut bce_loss_fn);
-        let (tpr, fpr) = model.calculate_roc(&train_x, &train_y, 10);
+        
+        let (tpr, fpr) = model.calculate_roc(&train_x, &train_y, 5);
         println!("tpr: {:?}", tpr);
         println!("fpr: {:?}", fpr);
 
         // Model using auc reshaping
+        println!("-----------------------------------------------------------------------");
+        println!("--------------------------AUC RESHAPING--------------------------------");
+        println!("-----------------------------------------------------------------------");
         let mut model = TitanicModel::new(input_size, hidden_units, output_size, lr, seed);
         model.train(&train_x, &train_y, epochs, &mut auc_loss_fn);
-        let (tpr, fpr) = model.calculate_roc(&train_x, &train_y, 10);
+        let (tpr, fpr) = model.calculate_roc(&train_x, &train_y, 5);
         println!("tpr: {:?}", tpr);
         println!("fpr: {:?}", fpr);
     }  
